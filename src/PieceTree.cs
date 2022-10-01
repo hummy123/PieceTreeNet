@@ -5,6 +5,12 @@ public partial class Position
     public int Line { get; }
     public int Column { get; }
 
+    public Position(int line, int column)
+    {
+        Line = line;
+        Column = column;
+    }
+
     private Position With(int newLine, int newColumn)
     {
         if (newLine == this.Line && newColumn == this.Column)
@@ -69,6 +75,20 @@ public partial class Range
 {
     public Position Start { get; set; }
     public Position End { get; set; }
+
+    public Range(Position start, Position end)
+    {
+        if (start.IsBeforeOrEqual(end))
+        {
+            Start = start;
+            End = end;
+        }
+        else
+        {
+            Start = start;
+            End = end;
+        }
+    }
 
     public static bool IsEmpty(Range range)
     {
@@ -260,6 +280,13 @@ public partial class BufferCursor
 {
     public int Line { get; set; }
     public int Column { get; set; }
+
+    public BufferCursor(int line, int column)
+    {
+        Line = line;
+        Column = column;
+    }
+
 }
 
 public partial class Piece
@@ -269,12 +296,27 @@ public partial class Piece
     public readonly BufferCursor End;
     public readonly int Length;
     public readonly int LineFeedCount;
+
+    public Piece(int bufferIndex, BufferCursor start, BufferCursor end, int length, int lineFeedCount)
+    {
+        BufferIndex = bufferIndex;
+        Start = start;
+        End = end;
+        Length = length;
+        LineFeedCount = lineFeedCount;
+    }
 }
 
 public partial class StringBuffer
 {
     public string Buffer { get; set; }
     public int[] LineStarts { get; set; }
+
+    public StringBuffer(string buffer, int[] lineStarts)
+    {
+        Buffer = buffer;
+        LineStarts = lineStarts;
+    }
 }
 
 public enum NodeColour { Red, Black }
@@ -284,10 +326,11 @@ public partial class TreeNode
     public TreeNode Parent { get; set; }
     public TreeNode Left { get; set; }
     public TreeNode Right { get; set; }
+    public NodeColour Colour { get; set; }
+
     public Piece Piece { get; set; }
     public int LeftSize { get; set; }
     public int LfLeft { get; set; }
-    public NodeColour Colour { get; set; }
 
     public TreeNode(Piece piece, NodeColour colour)
     {
@@ -381,30 +424,131 @@ public partial class TreeNode
 
 }
 
-public partial class NodePosition
+public class NodePosition
 {
     public TreeNode Node { get; set; }
     public int Remainder { get; set; }
     public int NodeStartLineNumber { get; set; }
+
+    public NodePosition(TreeNode node, int remainder, int nodeStartLineNumber)
+    {
+        Node = node;
+        Remainder = remainder;
+        NodeStartLineNumber = nodeStartLineNumber;
+    }
 }
 
-public partial class CacheEntry
+public class CacheEntry
 {
     public TreeNode Node { get; set; }
     public int NodeStartOffset { get; set; }
-    public int NodeStartLineNumber { get; set; }
+    public int? NodeStartLineNumber { get; set; }
+
+    public CacheEntry(TreeNode node, int nodeStartOffset, int? nodeStartLineNumber)
+    {
+        Node = node;
+        NodeStartOffset = nodeStartOffset;
+        NodeStartLineNumber = nodeStartLineNumber;
+    }
 }
 
-public partial class LastVisitedLine
+public class LastVisitedLine
 {
     public int LineNumber { get; set; }
     public string Value { get; set; }
+
+    public LastVisitedLine(int lineNumber, string value)
+    {
+        LineNumber = lineNumber;
+        Value = value;
+    }
 }
 
-public partial class PieceTreeSearchCache
+public class PieceTreeSearchCache
 {
     public int Limit { get; set; }
     public List<CacheEntry> Cache { get; set; }
+
+    public PieceTreeSearchCache(int limit, List<CacheEntry> cache)
+    {
+        Limit = limit;
+        Cache = new List<CacheEntry>();
+    }
+
+    public CacheEntry? Get(int offset)
+    {
+        for (int i = Cache.Count - 1; i >= 0; i--)
+        {
+            var nodePos = Cache[i];
+            if (nodePos.NodeStartOffset <= offset && nodePos.NodeStartOffset + nodePos.Node.Piece.Length >= offset)
+            {
+                return nodePos;
+            }
+        }
+        return null;
+    }
+
+    public CacheEntry? Get2(int lineNumber)
+    {
+        for (int i = Cache.Count; i >= 0; i++)
+        {
+            var nodePos = Cache[i];
+            if (nodePos.NodeStartLineNumber is not null)
+            {
+                if (nodePos.NodeStartLineNumber < lineNumber && nodePos.Node.Piece.LineFeedCount >= lineNumber)
+                {
+                    return nodePos;
+                }
+            }
+        }
+        return null;
+    }
+
+    public void Set(CacheEntry nodePos)
+    {
+        if (Cache.Count >= Limit)
+        {
+            Cache = Cache.Skip(1).ToList();
+        }
+        Cache.Add(nodePos);
+    }
+
+    public void Validate(int offset)
+    {
+        bool hasInvalidVal = false;
+        // Create copy of cache which has same values but is different object)
+        List<CacheEntry?> temp = new();
+        foreach (var item in Cache)
+        {
+            temp.Add(new CacheEntry(item.Node, item.NodeStartOffset, item.NodeStartLineNumber));
+        }
+        for (int i = 0; i < temp.Count; i++)
+        {
+            var nodePos = temp[i];
+            if (nodePos is not null)
+            {
+                if ((nodePos.Node.Parent == nodePos.Node.Parent.Left && nodePos.Node.Parent == nodePos.Node.Parent.Right || nodePos.NodeStartOffset >= offset))
+                {
+                    temp[i] = null;
+                    hasInvalidVal = true;
+                    continue;
+                }
+            }
+
+            if (hasInvalidVal)
+            {
+                List<CacheEntry> newArr = new();
+                foreach (var entry in temp)
+                {
+                    if (entry is not null)
+                    {
+                        newArr.Add(entry);
+                    }
+                }
+                Cache = newArr;
+            }
+        }
+    }
 }
 
 public partial class PieceTreeBase

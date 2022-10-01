@@ -1,22 +1,12 @@
 namespace PieceTree;
 
 // This file contains boilerplate code that I find
-// doesn't help understanding the data structure,
-// such as the constructors, the generated equals override
-// and the instance functions that just forward a call to
-// a static function (added to maintain API compatibility
-// with the VS Code implementation).
-// Hopefully this makes the main file
-// less cluttered and easier to read.
+// doesn't help understanding the data structure:
+// namely, the instance functions which just call a static function,
+// as seen in the API provided by VS Code's implementation.
 
 public partial class Position
 {
-    public Position(int line, int column)
-    {
-        Line = line;
-        Column = column;
-    }
-
     public bool IsBefore(Position other)
     {
         return Position.IsBefore(this, other);
@@ -42,20 +32,6 @@ public partial class Position
 
 public partial class Range
 {
-    public Range(Position start, Position end)
-    {
-        if (start.IsBeforeOrEqual(end))
-        {
-            Start = start;
-            End = end;
-        }
-        else
-        {
-            Start = start;
-            End = end;
-        }
-    }
-
     public bool IsEmpty()
     {
         return Range.IsEmpty(this);
@@ -94,36 +70,6 @@ public partial class Range
     public Range CollapseToStart()
     {
         return Range.CollapseToStart(this);
-    }
-}
-
-public partial class BufferCursor
-{
-    public BufferCursor(int line, int column)
-    {
-        Line = line;
-        Column = column;
-    }
-}
-
-public partial class Piece
-{
-    public Piece(int bufferIndex, BufferCursor start, BufferCursor end, int length, int lineFeedCount)
-    {
-        BufferIndex = bufferIndex;
-        Start = start;
-        End = end;
-        Length = length;
-        LineFeedCount = lineFeedCount;
-    }
-}
-
-public partial class StringBuffer
-{
-    public StringBuffer(string buffer, int[] lineStarts)
-    {
-        Buffer = buffer;
-        LineStarts = lineStarts;
     }
 }
 
