@@ -307,12 +307,77 @@ public partial class Piece
     }
 }
 
+public class LineStarts
+{
+    public List<uint> Lines { get; }
+    public int Cr { get; }
+    public int Lf { get; }
+    public int CrLf { get; }
+    public bool IsBasicAscii { get; }
+
+    public LineStarts(List<uint> lines, int cr, int lf, int crLf, bool isBasicAscii)
+    {
+        Lines = lines;
+        Cr = cr;
+        Lf = lf;
+        CrLf = crLf;
+        IsBasicAscii = isBasicAscii;
+    }
+
+    public List<uint> CreateLineStartsFast(string str, bool isReadOnly = true)
+    {
+        List<uint> r = new() { 0u };
+        int rLength = 1;
+
+        for (int i = 0; i < str.Length; i++)
+        {
+            var len = str.Length;
+            var chr = str[i];
+
+            if (chr == EndOfLine.Cr[0])
+            {
+                var nextLoopNum = i + 1;
+                if (str.Length > nextLoopNum && str[nextLoopNum] == EndOfLine.Lf[0])
+                {
+                    // \r\n case
+                    r[rLength++] = (uint)i + 2;
+                    i++; // skip \n
+                }
+                else
+                {
+                    // \r case
+                    r[rLength++] = (uint)i + 1;
+                }
+            }
+            else if (chr == EndOfLine.Lf[0])
+            {
+                r[rLength++] = (uint)i + 1;
+            }
+        }
+
+        if (isReadOnly)
+        {
+            // create a defensive copy of the list where writes don't matter
+            return r.Skip(0).ToList();
+        }
+        else
+        {
+            return r;
+        }
+    }
+
+    public LineStarts CreateLineStarts(List<uint> r, string str)
+    {
+
+    }
+}
+
 public partial class StringBuffer
 {
     public string Buffer { get; set; }
-    public int[] LineStarts { get; set; }
+    public List<int> LineStarts { get; set; }
 
-    public StringBuffer(string buffer, int[] lineStarts)
+    public StringBuffer(string buffer, List<int> lineStarts)
     {
         Buffer = buffer;
         LineStarts = lineStarts;
@@ -551,9 +616,20 @@ public class PieceTreeSearchCache
     }
 }
 
+// Because C# doesn't have ergonomics for enums with non-integral values,
+// we use a static class to represent EndOfLine.
+// This is not type-safe in the sense that the compiler will not give
+// warnings for usage that does not align with the design intent.
+public static class EndOfLine
+{
+    public static string Cr = "\r";
+    public static string Lf = "\n";
+    public static string CrLf = "\r\n";
+}
+
 public partial class PieceTreeBase
 {
-    public TreeNode Root { get; set; }
+    public TreeNode? Root { get; set; }
     public List<StringBuffer> Buffers { get; set; }
     public int LineCount { get; set; }
     public int Length { get; set; }
@@ -563,6 +639,38 @@ public partial class PieceTreeBase
     public BufferCursor LastChangedBufferPos { get; set; }
     public PieceTreeSearchCache SearchCache { get; set; }
     public LastVisitedLine LastVisitedLine { get; set; }
+
+    public PieceTreeBase(List<StringBuffer> chunks, string eol, bool eolNormalised)
+    {
+        Create(chunks, eol, eolNormalised);
+    }
+
+    private void Create(List<StringBuffer> chunks, string eol, bool eolNormalised)
+    {
+        Buffers = new List<StringBuffer>()
+        {
+            new StringBuffer("", new List<int> {0})
+        };
+        LastChangedBufferPos = new BufferCursor(0, 0);
+        Root = null;
+        LineCount = 1;
+        Length = 0;
+        Eol = eol;
+        EolLength = eol.Length;
+        EolNormalised = eolNormalised;
+
+        TreeNode? lastNode = null;
+
+        for (int i = 0; i < chunks.Count; i++)
+        {
+            var len = chunks.Count;
+            if (chunks[i].Buffer.Length > 0)
+            {
+                // Need to add LineStarts class somewhere.
+                // chunks[i].LineStarts = LineStarts.CreateLineStartsFast(chunks[i].Buffer);
+            }
+        }
+    }
 }
 
 public partial class PieceTreeSnapshot
