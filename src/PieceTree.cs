@@ -1,6 +1,25 @@
 ﻿namespace PieceTree;
 
-public partial class Position
+/// <summary>
+/// Provides access to various CharCodes checked in the data structure.
+/// </summary>
+// Implementation detail: Static class with static readonly values 
+// is used instead of an enum because getting an enum's (char) value 
+// requires (char) unboxing, which is more computationally expensive
+// and less ergonomic than simply if (myChr == CharCode.LineFeed).
+// A restricted enum's greater type safety was not judged to outweigh this cost.
+public static class CharCodes
+{
+    public static readonly char CarriageReturn = '\r';
+    public static readonly char LineFeed = '\n';
+}
+
+/// <summary>
+/// Represents a position in the text buffer. 
+/// The full Position class is ported from VS Code,
+/// providing access to methods not used in the PieceTree text buffer. 
+/// </summary>
+public class Position
 {
     public int Line { get; }
     public int Column { get; }
@@ -11,6 +30,9 @@ public partial class Position
         Column = column;
     }
 
+    /// <summary>
+    /// Returns a new position with the specifieed line and column.
+    /// <summary>
     private Position With(int newLine, int newColumn)
     {
         if (newLine == this.Line && newColumn == this.Column)
@@ -23,6 +45,9 @@ public partial class Position
         }
     }
 
+    /// <summary>
+    /// Returns a new position moved from the previous one by its parameters.
+    /// </summary>
     private Position Delta(int moveLine = 0, int moveCol = 0)
     {
         int newLine = this.Line + moveLine;
@@ -32,6 +57,10 @@ public partial class Position
         return new Position(newLine, newCol);
     }
 
+    /// <summary>
+    /// Checks if the first position is before the second. 
+    /// Returns false if they are equal.
+    /// </summary>
     public static bool IsBefore(Position a, Position b)
     {
         if (a.Line < b.Line)
@@ -45,6 +74,10 @@ public partial class Position
         return a.Column < b.Column;
     }
 
+    /// <summary>
+    /// Checks if the first position is before the second.
+    /// Returns true if they are equal.
+    /// </summary>
     public static bool IsBeforeOrEqual(Position a, Position b)
     {
         if (a.Line < b.Line)
@@ -58,6 +91,10 @@ public partial class Position
         return a.Column <= b.Column;
     }
 
+    /// <summary>
+    /// Calculates the difference between two positions.
+    /// This is useful for sorting.
+    /// </summary>
     public static int Compare(Position a, Position b)
     {
         if (a.Line == b.Line)
@@ -69,9 +106,44 @@ public partial class Position
             return a.Line - b.Line;
         }
     }
+
+    // Implementation detail:
+    // The VS Code API for the Position class
+    // has instance methods which simply call the
+    // static method with the same name, which this rewrite follows. 
+    // You will not benefit from reading the remainder of this class
+    // if you are simply trying to understand the data structure.
+    #region InstanceMethods
+    public bool IsBefore(Position other)
+    {
+        return Position.IsBefore(this, other);
+    }
+
+    public bool IsBeforeOrEqual(Position other)
+    {
+        return Position.IsBeforeOrEqual(this, other);
+    }
+    #endregion
+
+    // Implementation detail:
+    // C# does not by default compare class instances by value but by reference.
+    // This equals method and the hash code override
+    // changes the default comparison behaviour and can be ignored by developers
+    // from other languages trying to understand the data structure.
+    public override bool Equals(object? obj)
+    {
+        return obj is Position position &&
+               Line == position.Line &&
+               Column == position.Column;
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Line, Column);
+    }
 }
 
-public partial class Range
+public class Range
 {
     public Position Start { get; set; }
     public Position End { get; set; }
@@ -274,9 +346,51 @@ public partial class Range
             return false;
         }
     }
+
+    #region InstanceMethods
+    public bool IsEmpty()
+    {
+        return Range.IsEmpty(this);
+    }
+
+    public bool ContainsPosition(Position position)
+    {
+        return Range.ContainsPosition(this, position);
+    }
+
+    public bool ContainsPositionStrict(Position position)
+    {
+        return Range.ContainsPositionStrict(this, position);
+    }
+
+    public bool ContainsRange(Range range)
+    {
+        return Range.ContainsRange(this, range);
+    }
+
+    public bool ContainsRangeStrict(Range range)
+    {
+        return Range.ContainsRangeStrict(this, range);
+    }
+
+    public Range Union(Range range)
+    {
+        return Range.Union(this, range);
+    }
+
+    public Range Intersection(Range range)
+    {
+        return Range.Intersection(this, range);
+    }
+
+    public Range CollapseToStart()
+    {
+        return Range.CollapseToStart(this);
+    }
+    #endregion
 }
 
-public partial class BufferCursor
+public class BufferCursor
 {
     public int Line { get; set; }
     public int Column { get; set; }
@@ -289,7 +403,7 @@ public partial class BufferCursor
 
 }
 
-public partial class Piece
+public class Piece
 {
     public readonly int BufferIndex;
     public readonly BufferCursor Start;
@@ -331,13 +445,12 @@ public class LineStarts
 
         for (int i = 0; i < str.Length; i++)
         {
-            var len = str.Length;
             var chr = str[i];
 
-            if (chr == EndOfLine.Cr[0])
+            if (chr == CharCodes.CarriageReturn)
             {
                 var nextLoopNum = i + 1;
-                if (str.Length > nextLoopNum && str[nextLoopNum] == EndOfLine.Lf[0])
+                if (str.Length > nextLoopNum && str[nextLoopNum] == CharCodes.LineFeed)
                 {
                     // \r\n case
                     r[rLength++] = (uint)i + 2;
@@ -349,7 +462,7 @@ public class LineStarts
                     r[rLength++] = (uint)i + 1;
                 }
             }
-            else if (chr == EndOfLine.Lf[0])
+            else if (chr == CharCodes.LineFeed)
             {
                 r[rLength++] = (uint)i + 1;
             }
@@ -366,13 +479,53 @@ public class LineStarts
         }
     }
 
-    public LineStarts CreateLineStarts(List<uint> r, string str)
+    public LineStarts CreateLineStarts(List<uint> tempLineStarts, string str)
     {
+        List<uint> r = new() { 0u };
+        int rLength = 1;
+        int cr = 0;
+        int lf = 0;
+        int crlf = 0;
+        bool isBasicAscii = true;
 
+        for (int i = 0; i < str.Length; i++)
+        {
+            char chr = str[i];
+
+            if (chr == CharCodes.CarriageReturn)
+            {
+                var nextLoopNum = i + 1;
+                if (str.Length > nextLoopNum && str[nextLoopNum] == CharCodes.LineFeed)
+                {
+                    // \r\n case
+                    crlf++;
+                    r[rLength++] = (uint)i + 2;
+                    i++; // skip \n
+                }
+                else
+                {
+                    // \r case
+                    cr++;
+                    r[rLength++] = (uint)i + 1;
+                }
+            }
+            else if (chr == CharCodes.LineFeed)
+            {
+                lf++;
+                r[rLength++] = (uint)i + 1;
+            }
+            else
+            {
+                if (isBasicAscii)
+                {
+
+                }
+            }
+        }
     }
 }
 
-public partial class StringBuffer
+public class StringBuffer
 {
     public string Buffer { get; set; }
     public List<int> LineStarts { get; set; }
@@ -386,7 +539,7 @@ public partial class StringBuffer
 
 public enum NodeColour { Red, Black }
 
-public partial class TreeNode
+public class TreeNode
 {
     public TreeNode Parent { get; set; }
     public TreeNode Left { get; set; }
@@ -616,18 +769,7 @@ public class PieceTreeSearchCache
     }
 }
 
-// Because C# doesn't have ergonomics for enums with non-integral values,
-// we use a static class to represent EndOfLine.
-// This is not type-safe in the sense that the compiler will not give
-// warnings for usage that does not align with the design intent.
-public static class EndOfLine
-{
-    public static string Cr = "\r";
-    public static string Lf = "\n";
-    public static string CrLf = "\r\n";
-}
-
-public partial class PieceTreeBase
+public class PieceTreeBase
 {
     public TreeNode? Root { get; set; }
     public List<StringBuffer> Buffers { get; set; }
@@ -673,7 +815,7 @@ public partial class PieceTreeBase
     }
 }
 
-public partial class PieceTreeSnapshot
+public class PieceTreeSnapshot
 {
     public Piece[] Pieces { get; set; }
     public int Index { get; set; }
@@ -683,7 +825,7 @@ public partial class PieceTreeSnapshot
 
 enum DefaultEndOfLine { Lf = 1, CrLf = 2 }
 
-public partial class PieceTreeTextBufferFactory
+public class PieceTreeTextBufferFactory
 {
     public List<StringBuffer> Chunks { get; set; }
     public String Bom { get; set; }
@@ -693,7 +835,7 @@ public partial class PieceTreeTextBufferFactory
     public bool NoramliseEol { get; set; }
 }
 
-public partial class PieceTreeTextBufferBuilder
+public class PieceTreeTextBufferBuilder
 {
     public List<StringBuffer> Chunks { get; set; }
     public string Bom { get; set; }
