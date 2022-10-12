@@ -144,6 +144,12 @@ public class Position
     }
 }
 
+/// <summary>
+/// Represents a range in the text before, 
+/// from the start position all the way to the end position.
+/// The full Range class is ported from VS Code,
+/// providing access to methods not used in the PieceTree text buffer. 
+/// </summary>
 public class Range
 {
     public Position Start { get; set; }
@@ -214,6 +220,9 @@ public class Range
         return true;
     }
 
+    /// <summary>
+    /// Test if range b is in  range a. If the range b is equal to the range a, will return true.
+    /// </summary>
     public static bool ContainsRange(Range a, Range b)
     {
         if (b.Start.Line < a.Start.Line || b.End.Line < a.Start.Line)
@@ -235,6 +244,9 @@ public class Range
         return true;
     }
 
+    /// <summary>
+    /// Test if range b is in  range a. If the range b is equal to the range a, will return false.
+    /// </summary>
     public static bool ContainsRangeStrict(Range a, Range b)
     {
         if (b.Start.Line < a.Start.Line || b.End.Line < a.Start.Line)
@@ -256,6 +268,9 @@ public class Range
         return true;
     }
 
+    /// <summary>
+    /// Creates a new range from the first start position and the last end position.
+    /// </summary>
     public static Range Union(Range a, Range b)
     {
         Position newStart = a.Start.IsBeforeOrEqual(b.Start) ? a.Start : b.Start;
@@ -263,6 +278,9 @@ public class Range
         return new Range(newStart, newEnd);
     }
 
+    /// <summary>
+    /// Returns the intersection (in the sense of set theory) of two ranges.
+    /// </summary>
     public static Range Intersection(Range a, Range b)
     {
         Position newStart = a.Start.IsBeforeOrEqual(b.Start) ? b.Start : a.Start;
@@ -270,11 +288,17 @@ public class Range
         return new Range(newStart, newEnd);
     }
 
+    /// <summary>
+    /// Returns a new empty range using this range's start position.
+    /// </summary>
     public static Range CollapseToStart(Range range)
     {
         return new Range(range.Start, range.Start);
     }
 
+    /// <summary>
+    /// Tests if two ranges are touching in any way.
+    /// </summary>
     public static bool AreIntersectingOrTouching(Range a, Range b)
     {
         // Check if `a` is before `b`
@@ -292,6 +316,9 @@ public class Range
         return true;
     }
 
+    /// <summary>
+    /// Tests if two ranges are intersecting. If the ranges are touching, returns true.
+    /// </summary>
     public static bool AreIntersecting(Range a, Range b)
     {
         // Check if `a` is before `b`
@@ -309,6 +336,10 @@ public class Range
         return true;
     }
 
+    /// <summary>
+    /// A function that compares ranges, useful for sorting ranges.
+    /// It will first compare ranges on the startPosition and then on the endPosition.
+    /// </summary>
     public static int CompareUsingStarts(Range a, Range b)
     {
         if (!a.IsEmpty() && !b.IsEmpty())
@@ -332,6 +363,10 @@ public class Range
         return aExists - bExists;
     }
 
+    /// <summary>
+    /// A function that compares ranges, useful for sorting ranges.
+    /// It will first compare ranges on the endPosition and then on the startPosition.
+    /// </summary>
     public static int CompareUsingEnds(Range a, Range b)
     {
         if (a.End.Line == b.End.Line)
@@ -348,6 +383,10 @@ public class Range
         }
         return a.End.Line - b.End.Line;
     }
+
+    /// <summary>
+    /// Tests if a range spans multiple lines.
+    /// </summary>
     public static bool SpansMultipleLines(Range range)
     {
         if (range.Start.Column < range.End.Column)
@@ -360,6 +399,12 @@ public class Range
         }
     }
 
+    // Implementation detail:
+    // The VS Code API for the Position class
+    // has instance methods which simply call the
+    // static method with the same name, which this rewrite follows. 
+    // You will not benefit from reading the remainder of this class
+    // if you are simply trying to understand the data structure.
     #region InstanceMethods
     public bool IsEmpty()
     {
