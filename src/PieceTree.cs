@@ -453,12 +453,13 @@ public class BufferCursor
     public int Line { get; set; }
     public int Column { get; set; }
 
+    public static readonly BufferCursor EmptyBuffer = new BufferCursor(0, 0);
+
     public BufferCursor(int line, int column)
     {
         Line = line;
         Column = column;
     }
-
 }
 
 public class Piece
@@ -468,6 +469,8 @@ public class Piece
     public readonly BufferCursor End;
     public readonly int Length;
     public readonly int LineFeedCount;
+
+    public static readonly Piece EmptyPiece = new Piece(0, BufferCursor.EmptyBuffer, BufferCursor.EmptyBuffer, 0, 0);
 
     public Piece(int bufferIndex, BufferCursor start, BufferCursor end, int length, int lineFeedCount)
     {
@@ -496,7 +499,7 @@ public class LineStarts
         IsBasicAscii = isBasicAscii;
     }
 
-    public List<uint> CreateLineStartsFast(string str, bool isReadOnly = true)
+    public static List<uint> CreateLineStartsFast(string str, bool isReadOnly = true)
     {
         List<uint> r = new() { 0u };
         int rLength = 1;
@@ -537,7 +540,7 @@ public class LineStarts
         }
     }
 
-    public LineStarts CreateLineStarts(List<uint> tempLineStarts, string str)
+    public static LineStarts CreateLineStarts(List<uint> tempLineStarts, string str)
     {
         List<uint> r = new() { 0u };
         int rLength = 1;
@@ -590,9 +593,9 @@ public class LineStarts
 public class StringBuffer
 {
     public string Buffer { get; set; }
-    public List<int> LineStarts { get; set; }
+    public List<LineStarts> LineStarts { get; set; }
 
-    public StringBuffer(string buffer, List<int> lineStarts)
+    public StringBuffer(string buffer, List<LineStarts> lineStarts)
     {
         Buffer = buffer;
         LineStarts = lineStarts;
@@ -612,15 +615,17 @@ public class TreeNode
     public int LeftSize { get; set; }
     public int LfLeft { get; set; }
 
+    public static readonly TreeNode Nil = new TreeNode(Piece.EmptyPiece, NodeColour.Black);
+
     public TreeNode(Piece piece, NodeColour colour)
     {
         Piece = piece;
         Colour = colour;
         LeftSize = 0;
         LfLeft = 0;
-        Parent = this;
-        Left = this;
-        Right = this;
+        Parent = Nil;
+        Left = Nil;
+        Right = Nil;
     }
 
     public static TreeNode Leftmost(TreeNode node)
@@ -697,9 +702,9 @@ public class TreeNode
 
     public void Detach()
     {
-        this.Parent = this;
-        this.Left = this;
-        this.Right = this;
+        this.Parent = Nil;
+        this.Left = Nil;
+        this.Right = Nil;
     }
 }
 
@@ -832,7 +837,7 @@ public class PieceTreeSearchCache
 
 public class PieceTreeBase
 {
-    public TreeNode? Root { get; set; }
+    public TreeNode Root { get; set; }
     public List<StringBuffer> Buffers { get; set; }
     public int LineCount { get; set; }
     public int Length { get; set; }
@@ -855,7 +860,7 @@ public class PieceTreeBase
             new StringBuffer("", new List<int> {0})
         };
         LastChangedBufferPos = new BufferCursor(0, 0);
-        Root = null;
+        Root = TreeNode.Nil;
         LineCount = 1;
         Length = 0;
         Eol = eol;
@@ -863,14 +868,12 @@ public class PieceTreeBase
         EolNormalised = eolNormalised;
 
         TreeNode? lastNode = null;
-
         for (int i = 0; i < chunks.Count; i++)
         {
             var len = chunks.Count;
             if (chunks[i].Buffer.Length > 0)
             {
-                // Need to add LineStarts class somewhere.
-                // chunks[i].LineStarts = LineStarts.CreateLineStartsFast(chunks[i].Buffer);
+                chunks[i].LineStarts = LineStarts.CreateLineStartsFast(chunks[i].Buffer);
             }
         }
     }
