@@ -12,6 +12,7 @@ public static class CharCodes
 {
     public static readonly char CarriageReturn = '\r';
     public static readonly char LineFeed = '\n';
+    public static readonly char Tab = '\t';
 }
 
 /// <summary>
@@ -162,11 +163,19 @@ public class Range
         }
     }
 
+    /// <summary>
+    /// Returns true if the range's start position is the same as the range's end position. 
+    /// Otherwise, returns false.
+    /// </summary>
     public static bool IsEmpty(Range range)
     {
         return range.Start == range.End;
     }
 
+    /// <summary>
+    /// Returns true if the position is in this range. 
+    /// Will return true if position is at the edges of the range too.
+    /// </summary>
     public static bool ContainsPosition(Range range, Position position)
     {
         if (position.Line < range.Start.Line || position.Line > range.End.Line)
@@ -184,6 +193,10 @@ public class Range
         return true;
     }
 
+    /// <summary>
+    /// Returns true if the position is in this range.
+    /// Returns false if the position is at the edges.
+    /// </summary>
     public static bool ContainsPositionStrict(Range range, Position position)
     {
         if (position.Line < range.Start.Line || position.Line > range.End.Line)
@@ -518,10 +531,14 @@ public class LineStarts
             {
                 if (isBasicAscii)
                 {
-
+                    if (chr != CharCodes.Tab && (chr < 32 || chr > 126))
+                    {
+                        isBasicAscii = false;
+                    }
                 }
             }
         }
+        return new LineStarts(r, cr, lf, crlf, isBasicAscii);
     }
 }
 
@@ -639,7 +656,6 @@ public class TreeNode
         this.Left = this;
         this.Right = this;
     }
-
 }
 
 public class NodePosition
