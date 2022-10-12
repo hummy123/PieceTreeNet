@@ -448,12 +448,18 @@ public class Range
     #endregion
 }
 
+/// <summary>
+/// The BufferCursor represents a position in the text buffer.
+/// </summary>
 public class BufferCursor
 {
+    /// <summary>
+    /// An empty buffer, useful for constructing "Empty" values that rely on a BufferCursor.
+    /// </summary>
+    public static readonly BufferCursor Empty = new BufferCursor(0, 0);
+
     public int Line { get; set; }
     public int Column { get; set; }
-
-    public static readonly BufferCursor EmptyBuffer = new BufferCursor(0, 0);
 
     public BufferCursor(int line, int column)
     {
@@ -462,15 +468,21 @@ public class BufferCursor
     }
 }
 
+/// <summary>
+/// This represents a Piece in the overall PieceTree structure which is contained within each node of the tree.
+/// </summary>
 public class Piece
 {
+    /// <summary>
+    /// An empty Piece, useful for constructing "Empty" values that rely on a Piece.
+    /// </summary>
+    public static readonly Piece Empty = new Piece(0, BufferCursor.Empty, BufferCursor.Empty, 0, 0);
+
     public readonly int BufferIndex;
     public readonly BufferCursor Start;
     public readonly BufferCursor End;
     public readonly int Length;
     public readonly int LineFeedCount;
-
-    public static readonly Piece EmptyPiece = new Piece(0, BufferCursor.EmptyBuffer, BufferCursor.EmptyBuffer, 0, 0);
 
     public Piece(int bufferIndex, BufferCursor start, BufferCursor end, int length, int lineFeedCount)
     {
@@ -484,6 +496,11 @@ public class Piece
 
 public class LineStarts
 {
+    /// <summary>
+    /// An empty LineStarts, useful for constructing "Empty" values that rely on a LineStarts instance.
+    /// </summary>
+    public static readonly LineStarts Empty = new LineStarts(new List<uint>(), 0, 0, 0, true);
+
     public List<uint> Lines { get; }
     public int Cr { get; }
     public int Lf { get; }
@@ -606,6 +623,12 @@ public enum NodeColour { Red, Black }
 
 public class TreeNode
 {
+    /// <summary>
+    /// An empty TreeNode, which all the previous "Empty" values in the above classes were created to represent. 
+    /// Useful for representing a "Nil" value in a Red Black Tree, which the PieceTree depends upon. 
+    /// </summary>
+    public static readonly TreeNode Empty = new TreeNode(Piece.Empty, NodeColour.Black);
+
     public TreeNode Parent { get; set; }
     public TreeNode Left { get; set; }
     public TreeNode Right { get; set; }
@@ -615,7 +638,6 @@ public class TreeNode
     public int LeftSize { get; set; }
     public int LfLeft { get; set; }
 
-    public static readonly TreeNode Nil = new TreeNode(Piece.EmptyPiece, NodeColour.Black);
 
     public TreeNode(Piece piece, NodeColour colour)
     {
@@ -623,9 +645,9 @@ public class TreeNode
         Colour = colour;
         LeftSize = 0;
         LfLeft = 0;
-        Parent = Nil;
-        Left = Nil;
-        Right = Nil;
+        Parent = Empty;
+        Left = Empty;
+        Right = Empty;
     }
 
     public static TreeNode Leftmost(TreeNode node)
@@ -702,9 +724,9 @@ public class TreeNode
 
     public void Detach()
     {
-        this.Parent = Nil;
-        this.Left = Nil;
-        this.Right = Nil;
+        this.Parent = Empty;
+        this.Left = Empty;
+        this.Right = Empty;
     }
 }
 
@@ -860,7 +882,7 @@ public class PieceTreeBase
             new StringBuffer("", new List<int> {0})
         };
         LastChangedBufferPos = new BufferCursor(0, 0);
-        Root = TreeNode.Nil;
+        Root = TreeNode.Empty;
         LineCount = 1;
         Length = 0;
         Eol = eol;
